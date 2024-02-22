@@ -803,7 +803,8 @@ where
     }
 
     /// Retrieves a outgoing viewing key of a sapling key
-    pub async fn get_ovk(&self, path: u32) -> Result<OutgoingViewingKey, LedgerAppError<E::Error>> {
+    // pub async fn get_ovk(&self, path: u32) -> Result<OutgoingViewingKey, LedgerAppError<E::Error>> {
+    pub async fn get_ovk(&self, path: u32) -> Result<[u8; OVK_SIZE], LedgerAppError<E::Error>> {
         let mut input_data = Vec::with_capacity(4);
         input_data
             .write_u32::<LittleEndian>(path)
@@ -840,13 +841,15 @@ where
         let mut bytes = [0u8; OVK_SIZE];
         bytes.copy_from_slice(&response_data[0..OVK_SIZE]);
 
-        let ovk = OutgoingViewingKey(bytes);
+        // let ovk = OutgoingViewingKey(bytes);
 
-        Ok(ovk)
+        // Ok(ovk)
+        Ok(bytes)
     }
 
     /// Retrieves a incoming viewing key of a sapling key
-    pub async fn get_ivk(&self, path: u32) -> Result<jubjub::Fr, LedgerAppError<E::Error>> {
+    // pub async fn get_ivk(&self, path: u32) -> Result<jubjub::Fr, LedgerAppError<E::Error>> {
+    pub async fn get_ivk(&self, path: u32) -> Result<[u8; IVK_SIZE], LedgerAppError<E::Error>> {
         let mut input_data = Vec::with_capacity(4);
         input_data
             .write_u32::<LittleEndian>(path)
@@ -885,7 +888,8 @@ where
 
         let y = jubjub::Fr::from_bytes(&bytes);
         if y.is_some().into() {
-            Ok(y.unwrap())
+            // Ok(y.unwrap())
+            Ok(y.unwrap().to_bytes())
         } else {
             Err(LedgerAppError::InvalidPK)
         }
