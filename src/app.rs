@@ -428,6 +428,43 @@ where
         Ok(bytes)
     }
 
+
+    /// Retrieves a incoming viewing key of a sapling key
+    pub async fn get_fvk(
+        &self,
+        path: u32,
+    ) -> Result<FvkFrRaw, LedgerAppError<E::Error>> {
+        let mut input_data = Vec::with_capacity(4);
+        input_data
+            .write_u32::<LittleEndian>(path)
+            .map_err(|_| LedgerAppError::AppSpecific(0, String::from("Invalid ZIP32-path")))?;
+
+        let command = APDUCommand { cla: Self::CLA, ins: INS_GET_FVK, p1: 0x01, p2: 0x00, data: input_data };
+
+        let response = self
+            .apdu_transport
+            .exchange(&command)
+            .await?;
+        match response.error_code() {
+            Ok(APDUErrorCode::NoError) => {},
+            Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
+            Err(err) => return Err(LedgerAppError::AppSpecific(err, "[APDU_ERROR] Unknown".to_string())),
+        }
+
+        let response_data = response.data();
+
+        if response_data.len() < FVK_SIZE {
+            return Err(LedgerAppError::InvalidPK);
+        }
+
+        log::info!("Received response {}", response_data.len());
+
+        let mut bytes = [0u8; FVK_SIZE];
+        bytes.copy_from_slice(&response_data[0 .. IVK_SIZE]);
+
+        Ok(bytes)
+    }
+
     /// Get the information needed from ledger to make a shielded spend
     pub async fn get_spendinfo(
         &self

@@ -1,6 +1,8 @@
 /// Application Identifier for Zcash commands
 pub const CLA: u8 = 0x85;
 
+/// Instruction to get Full Viewing Key
+pub const INS_GET_FVK: u8 = 0xf3;
 /// Instruction to get Incoming Viewing Key
 pub const INS_GET_IVK: u8 = 0xf0;
 /// Instruction to get Outgoing Viewing Key
@@ -45,6 +47,9 @@ pub const OVK_SIZE: usize = 32;
 
 /// Incoming Viewing Key size
 pub const IVK_SIZE: usize = 32;
+
+/// Incoming Viewing Key size
+pub const FVK_SIZE: usize = AK_SIZE + NSK_SIZE + OVK_SIZE;
 
 /// Nullifier size
 pub const NF_SIZE: usize = 32;
