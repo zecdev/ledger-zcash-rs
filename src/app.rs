@@ -460,7 +460,7 @@ where
         log::info!("Received response {}", response_data.len());
 
         let mut bytes = [0u8; FVK_SIZE];
-        bytes.copy_from_slice(&response_data[0 .. IVK_SIZE]);
+        bytes.copy_from_slice(&response_data[0 .. FVK_SIZE]);
 
         Ok(bytes)
     }
