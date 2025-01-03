@@ -29,6 +29,8 @@ pub const INS_GET_DIV_LIST: u8 = 0x09;
 
 /// Instruction to get a secp256k1 address
 pub const INS_GET_ADDR_SECP256K1: u8 = 0x01;
+
+pub const INS_GET_UNIFIED_ADDR_SECP256K1: u8 = 0x13;
 /// Instruction to get a Sapling address
 pub const INS_GET_ADDR_SAPLING: u8 = 0x11;
 /// Instruction to get a Sapling address with diversifier
@@ -56,6 +58,9 @@ pub const FVK_SIZE: usize = AK_SIZE + NSK_SIZE + OVK_SIZE;
 
 // Diversifier Key size
 pub const DK_SIZE: usize = 32;
+
+// Diversifiable Full Viewing Key size
+pub const DFVK_SIZE: usize = FVK_SIZE + DK_SIZE;
 
 /// Nullifier size
 pub const NF_SIZE: usize = 32;

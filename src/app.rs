@@ -429,7 +429,7 @@ where
     }
 
 
-    /// Retrieves a incoming viewing key of a sapling key
+    /// Retrieves a full viewing key of a sapling key
     pub async fn get_fvk(
         &self,
         path: u32,
@@ -465,11 +465,11 @@ where
         Ok(bytes)
     }
 
-     /// Retrieves a incoming viewing key of a sapling key
-     pub async fn get_dk(
+     /// Retrieves a sapling diverifiable full viewing key 
+     pub async fn get_dfvk(
         &self,
         path: u32,
-    ) -> Result<DkFrRaw, LedgerAppError<E::Error>> {
+    ) -> Result<DfvkRaw, LedgerAppError<E::Error>> {
         let mut input_data = Vec::with_capacity(4);
         input_data
             .write_u32::<LittleEndian>(path)
@@ -489,17 +489,91 @@ where
 
         let response_data = response.data();
 
-        if response_data.len() < DK_SIZE {
+        if response_data.len() < DFVK_SIZE {
             return Err(LedgerAppError::InvalidPK);
         }
 
         log::info!("Received response {}", response_data.len());
 
-        let mut bytes = [0u8; DK_SIZE];
-        bytes.copy_from_slice(&response_data[0 .. DK_SIZE]);
+        let mut bytes = [0u8; DFVK_SIZE];
+        bytes.copy_from_slice(&response_data[..DFVK_SIZE]);
 
         Ok(bytes)
     }
+
+
+    /// Retrieves a sapling diverifiable full viewing key 
+    pub async fn get_ufvk(
+        &self,
+        account: u32,
+    ) -> Result<UfvkRaw, LedgerAppError<E::Error>> {
+
+        let path = 0x8000_0000 + account;
+        let mut input_data = Vec::with_capacity(4);
+        input_data
+            .write_u32::<LittleEndian>(path)
+            .map_err(|_| LedgerAppError::AppSpecific(0, String::from("Invalid ZIP32-path")))?;
+
+        let command = APDUCommand { cla: Self::CLA, ins: INS_GET_DFVK, p1: 0x01, p2: 0x00, data: input_data };
+
+        let response = self
+            .apdu_transport
+            .exchange(&command)
+            .await?;
+        match response.error_code() {
+            Ok(APDUErrorCode::NoError) => {},
+            Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
+            Err(err) => return Err(LedgerAppError::AppSpecific(err, "[APDU_ERROR] Unknown".to_string())),
+        }
+
+        let response_data = response.data();
+
+        if response_data.len() < DFVK_SIZE {
+            return Err(LedgerAppError::InvalidPK);
+        }
+
+        log::info!("Received response {}", response_data.len());
+
+        let mut dfvk_bytes = [0u8; DFVK_SIZE];
+        dfvk_bytes.copy_from_slice(&response_data[..DFVK_SIZE]);
+
+        let path_string = format!("m/44'/133'/{}'", account);
+        let path = BIP44Path::from_string(&path_string)
+            .map_err(|_|LedgerAppError::InvalidDerivationPath)?;
+
+        let serialized_path = path.serialize();
+
+        // require no confirmation
+        let command = APDUCommand { cla: Self::CLA, ins: INS_GET_UNIFIED_ADDR_SECP256K1, p1: 0x00, p2: 0x00, data: serialized_path };
+
+        let response = self
+            .apdu_transport
+            .exchange(&command)
+            .await?;
+        match response.error_code() {
+            Ok(APDUErrorCode::NoError) => {},
+            Ok(err) => return Err(LedgerAppError::AppSpecific(err as _, err.description())),
+            Err(err) => return Err(LedgerAppError::AppSpecific(err, "[APDU_ERROR] Unknown".to_string())),
+        }
+
+        let response_data = response.data();
+        if response_data.len() != PK_LEN_SECP256K1 {
+            return Err(LedgerAppError::InvalidPK);
+        }
+        
+        let mut secp256k1_bytes = [0u8; PK_LEN_SECP256K1];
+        
+        secp256k1_bytes.copy_from_slice(response_data);
+        
+        Ok(
+            UfvkRaw {
+                transparent: secp256k1_bytes,
+                dfvk: dfvk_bytes,
+                orchard: None,
+            }
+        )
+    }
+    
 
     /// Get the information needed from ledger to make a shielded spend
     pub async fn get_spendinfo(
